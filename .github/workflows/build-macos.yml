@@ -56,5 +56,19 @@ jobs:
           FlyClimbingAnalyzer-${{ github.ref_name }}.dmg
         draft: false
         prerelease: false
+        name: FlyClimbingAnalyzer ${{ github.ref_name }}
+        body: |
+          ## FlyClimbingAnalyzer ${{ github.ref_name }}
+          
+          ### 新功能
+          - UI布局优化：视频列表加载UI已调整到左侧位置
+          - 改进的用户界面和用户体验
+          
+          ### 下载说明
+          - 下载DMG文件后，双击打开并拖拽应用到Applications文件夹
+          - 首次运行可能需要在"系统偏好设置 > 安全性与隐私"中允许应用运行
+          
+          ### 系统要求
+          - macOS 10.14 或更高版本
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
