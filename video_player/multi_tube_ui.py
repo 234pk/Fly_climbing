@@ -109,6 +109,7 @@ class VideoDisplayWidget(QWidget):
         
         # 手动选择果蝇相关
         self.manual_selecting = False  # 是否处于手动选择模式
+        self.remove_fly_mode = False  # 是否处于去除果蝇模式
         
     def paintEvent(self, event):
         """绘制事件"""
@@ -230,6 +231,18 @@ class VideoDisplayWidget(QWidget):
     def mouseReleaseEvent(self, event):
         """鼠标释放事件"""
         if event.button() == Qt.LeftButton:
+            # 处理去除果蝇模式
+            if self.remove_fly_mode:
+                # 获取点击位置对应的管子
+                tube_index = self.get_tube_at_position(event.pos())
+                if tube_index >= 0:
+                    # 转换为图像坐标
+                    image_pos = self.display_to_image_coords(event.pos())
+                    if image_pos:
+                        # 发送去除果蝇信号
+                        self.fly_selected.emit(tube_index, image_pos)
+                return
+                
             # 处理手动选择果蝇
             if self.manual_selecting:
                 # 获取点击位置对应的管子
@@ -459,6 +472,7 @@ class VideoDisplayWidget(QWidget):
     def start_manual_selection(self):
         """开始手动选择果蝇"""
         self.manual_selecting = True
+        self.remove_fly_mode = False
         self.update()
         
     def stop_manual_selection(self):
@@ -507,6 +521,19 @@ class MultiTubeUI(QMainWindow):
         # 初始化UI
         self.init_ui()
         self.connect_signals()
+        
+    def start_remove_fly_mode(self):
+        """开始去除果蝇模式"""
+        if not self.video_player.is_video_loaded():
+            QMessageBox.warning(self, "警告", "请先加载视频")
+            return
+            
+        # 启动去除果蝇模式
+        self.video_display.remove_fly_mode = True
+        self.remove_fly_btn.setEnabled(False)
+        self.manual_select_btn.setEnabled(False)
+        self.undo_last_select_btn.setEnabled(False)
+        self.status_label.setText("去除果蝇模式：点击要去除的果蝇")
         
     def init_ui(self):
         """初始化用户界面"""
@@ -757,9 +784,12 @@ class MultiTubeUI(QMainWindow):
         self.manual_select_btn.setEnabled(False)  # 初始状态禁用
         self.undo_last_select_btn = QPushButton("撤销上一次选择")
         self.undo_last_select_btn.setEnabled(False)  # 初始状态禁用
+        self.remove_fly_btn = QPushButton("去除果蝇")
+        self.remove_fly_btn.setEnabled(False)  # 初始状态禁用
         
         manual_button_layout.addWidget(self.manual_select_btn)
         manual_button_layout.addWidget(self.undo_last_select_btn)
+        manual_button_layout.addWidget(self.remove_fly_btn)
         
         manual_select_layout.addLayout(manual_button_layout)
         
@@ -835,6 +865,7 @@ class MultiTubeUI(QMainWindow):
         # 手动选择控制
         self.manual_select_btn.clicked.connect(self.start_manual_selection)
         self.undo_last_select_btn.clicked.connect(self.undo_last_selection)
+        self.remove_fly_btn.clicked.connect(self.start_remove_fly_mode)
         
     def open_video(self):
         """打开视频文件（单视频模式，兼容原有功能）"""
@@ -1084,6 +1115,10 @@ class MultiTubeUI(QMainWindow):
         if self.current_video_index >= 0 and self.current_video_index < len(self.video_list):
             video_path = self.video_list[self.current_video_index]
             self.status_label.setText(f"已加载视频: {os.path.basename(video_path)}")
+            
+        # 视频加载完成后，启用手动选择和去除果蝇按钮
+        self.manual_select_btn.setEnabled(True)
+        self.remove_fly_btn.setEnabled(True)
         
     def on_video_finished(self):
         """处理视频播放完成信号"""
@@ -1599,6 +1634,34 @@ class MultiTubeUI(QMainWindow):
         
     def on_fly_selected(self, tube_index, image_pos):
         """处理果蝇选择事件"""
+        # 处理去除果蝇模式
+        if self.video_display.remove_fly_mode:
+            # 去除果蝇模式
+            success = self.detector.remove_fly_at_position(tube_index, image_pos)
+            
+            if success:
+                self.status_label.setText(f"已去除：管子 {tube_index+1} 位置 {image_pos}")
+                
+                # 更新表格
+                self.update_result_table()
+                
+                # 更新显示
+                if self.video_player.is_video_loaded():
+                    current_frame = self.video_player.get_current_frame()
+                    if current_frame is not None:
+                        if hasattr(self.detector, 'detection_results'):
+                            self.annotate_flies(current_frame, self.detector.detection_results)
+            else:
+                self.status_label.setText(f"去除失败：管子 {tube_index+1} 位置 {image_pos}")
+                
+            # 退出去除果蝇模式
+            self.video_display.remove_fly_mode = False
+            self.remove_fly_btn.setEnabled(True)
+            self.manual_select_btn.setEnabled(True)
+            self.undo_last_select_btn.setEnabled(True)
+            return
+            
+        # 处理手动选择模式
         if not self.manual_selecting:
             return
             

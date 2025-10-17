@@ -431,6 +431,108 @@ class MultiTubeFlyDetector:
                 
         return frame
         
+    def remove_fly_at_position(self, tube_index, position, threshold_distance=20):
+        """
+        去除指定管子中指定位置的果蝇
+        
+        参数:
+            tube_index: 管子索引
+            position: 要去除的果蝇位置 (x, y)
+            threshold_distance: 距离阈值，用于判断是否为同一个果蝇
+            
+        返回:
+            是否成功去除果蝇
+        """
+        if tube_index < 0 or tube_index >= self.tube_count:
+            return False
+            
+        if self.tube_regions[tube_index] is None:
+            return False
+            
+        # 获取管子区域
+        x, y, w, h = self.tube_regions[tube_index]
+        click_x, click_y = position
+        
+        # 检查点击位置是否在管子区域内
+        if not (x <= click_x <= x + w and y <= click_y <= y + h):
+            return False
+            
+        # 查找最近的果蝇位置
+        closest_fly_index = -1
+        min_distance = float('inf')
+        removed_fly = None
+        
+        # 首先检查detection_results中的果蝇
+        if hasattr(self, 'detection_results') and tube_index < len(self.detection_results) and self.detection_results[tube_index] is not None:
+            for i, (fly_x, fly_y, fly_height) in enumerate(self.detection_results[tube_index]):
+                # 计算距离
+                distance = ((fly_x - click_x) ** 2 + (fly_y - click_y) ** 2) ** 0.5
+                if distance < min_distance and distance <= threshold_distance:
+                    min_distance = distance
+                    closest_fly_index = i
+                    removed_fly = (fly_x, fly_y, fly_height)
+        
+        # 如果找到了最近的果蝇，从detection_results中移除
+        if closest_fly_index >= 0 and removed_fly is not None:
+            # 从detection_results中移除
+            self.detection_results[tube_index].pop(closest_fly_index)
+            
+            # 从检测历史中移除最近的记录
+            if self.detection_history[tube_index] and removed_fly[2] in self.detection_history[tube_index]:
+                # 移除最后一个匹配的高度值
+                for i in range(len(self.detection_history[tube_index]) - 1, -1, -1):
+                    if self.detection_history[tube_index][i] == removed_fly[2]:
+                        self.detection_history[tube_index].pop(i)
+                        break
+            
+            # 同时从current_frame_fly_results中移除（如果存在）
+            if hasattr(self, 'current_frame_fly_results') and tube_index < len(self.current_frame_fly_results):
+                for i, (fly_x, fly_y, fly_height) in enumerate(self.current_frame_fly_results[tube_index]):
+                    # 计算距离
+                    distance = ((fly_x - click_x) ** 2 + (fly_y - click_y) ** 2) ** 0.5
+                    if distance <= threshold_distance:
+                        self.current_frame_fly_results[tube_index].pop(i)
+                        break
+                    
+            # 更新统计信息
+            self._update_tube_statistics(tube_index)
+            
+            return True
+        
+        return False
+        
+    def _update_tube_statistics(self, tube_index):
+        """
+        更新指定管子的统计信息
+        
+        参数:
+            tube_index: 管子索引
+        """
+        if tube_index < 0 or tube_index >= self.tube_count:
+            return
+            
+        # 更新当前位置
+        if hasattr(self, 'current_frame_fly_results') and tube_index < len(self.current_frame_fly_results):
+            if self.current_frame_fly_results[tube_index]:
+                # 使用第一个果蝇作为主要位置（用于兼容性）
+                self.fly_positions[tube_index] = (self.current_frame_fly_results[tube_index][0][0], 
+                                                  self.current_frame_fly_results[tube_index][0][1])
+                
+                # 使用最高果蝇的高度作为当前高度
+                heights = [fly[2] for fly in self.current_frame_fly_results[tube_index]]
+                self.climbing_heights[tube_index] = max(heights)
+            else:
+                self.fly_positions[tube_index] = None
+                self.climbing_heights[tube_index] = 0
+        
+        # 重新计算最大高度和平均高度
+        if self.detection_history[tube_index]:
+            self.max_heights[tube_index] = max(self.detection_history[tube_index])
+            self.avg_heights[tube_index] = sum(self.detection_history[tube_index]) / len(self.detection_history[tube_index])
+        else:
+            self.max_heights[tube_index] = 0
+            self.avg_heights[tube_index] = 0
+            
     def export_data(self):
         """
         导出检测数据
