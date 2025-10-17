@@ -30,10 +30,30 @@ jobs:
       run: |
         pyinstaller build_mac.spec
     
+    - name: Check if app was created
+      run: |
+        ls -la dist/
+        if [ ! -d "dist/FlyClimbingAnalyzer.app" ]; then
+          echo "Error: FlyClimbingAnalyzer.app was not created"
+          exit 1
+        fi
+    
+    - name: Create DMG directory
+      run: |
+        mkdir -p dmg
+    
     - name: Create DMG
       run: |
         chmod +x create_dmg.sh
         ./create_dmg.sh
+    
+    - name: Check if DMG was created
+      run: |
+        ls -la dmg/
+        if [ ! -f "dmg/FlyClimbingAnalyzer_1.0.dmg" ]; then
+          echo "Error: FlyClimbingAnalyzer_1.0.dmg was not created"
+          exit 1
+        fi
     
     - name: Upload DMG artifact
       uses: actions/upload-artifact@v3

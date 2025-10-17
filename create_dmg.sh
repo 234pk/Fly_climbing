@@ -16,6 +16,19 @@ echo "清理并创建目录..."
 rm -rf "${DMG_DIR}"
 mkdir -p "${DMG_TEMP}"
 
+# 检查源目录和应用程序是否存在
+echo "检查源目录和应用程序..."
+if [ ! -d "${SOURCE_DIR}" ]; then
+  echo "错误: 源目录 ${SOURCE_DIR} 不存在"
+  exit 1
+fi
+
+if [ ! -d "${SOURCE_DIR}/${APP_NAME}.app" ]; then
+  echo "错误: 应用程序 ${SOURCE_DIR}/${APP_NAME}.app 不存在"
+  ls -la "${SOURCE_DIR}"
+  exit 1
+fi
+
 # 复制应用程序到临时目录
 echo "复制应用程序..."
 cp -R "${SOURCE_DIR}/${APP_NAME}.app" "${DMG_TEMP}/"
@@ -28,8 +41,15 @@ ln -s /Applications "${DMG_TEMP}/Applications"
 echo "创建DMG..."
 hdiutil create -volname "${APP_NAME}" -srcfolder "${DMG_TEMP}" -ov -format UDZO "${DMG_FINAL}"
 
+# 检查DMG是否创建成功
+if [ ! -f "${DMG_FINAL}" ]; then
+  echo "错误: DMG文件创建失败"
+  exit 1
+fi
+
 # 清理临时目录
 echo "清理临时目录..."
 rm -rf "${DMG_TEMP}"
 
 echo "DMG安装包创建完成: ${DMG_FINAL}"
+ls -la "${DMG_FINAL}"
