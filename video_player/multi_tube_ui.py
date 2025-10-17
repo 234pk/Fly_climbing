@@ -12,9 +12,9 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                             QTableWidget, QTableWidgetItem, QFileDialog, QGroupBox,
                             QGridLayout, QMessageBox, QHeaderView, QSplitter,
                             QTabWidget, QTextEdit, QComboBox, QCheckBox, QProgressBar,
-                            QDialog, QLineEdit, QDialogButtonBox, QListWidget, QAbstractItemView)
+                            QDialog, QLineEdit, QDialogButtonBox, QListWidget, QAbstractItemView, QAction)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QThread, QRect
-from PyQt5.QtGui import QImage, QPixmap, QFont, QIcon, QPainter
+from PyQt5.QtGui import QImage, QPixmap, QFont, QIcon, QPainter, QClipboard
 
 from video_player.player import VideoPlayer
 from video_player.multi_tube_detector import MultiTubeFlyDetector
@@ -712,6 +712,17 @@ class MultiTubeUI(QMainWindow):
         self.result_table.setColumnCount(5)
         self.result_table.setHorizontalHeaderLabels(["基因型", "当前高度", "最大高度", "平均高度", "排名"])
         self.result_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        
+        # 启用表格选择功能
+        self.result_table.setSelectionMode(QAbstractItemView.ContiguousSelection)
+        self.result_table.setSelectionBehavior(QAbstractItemView.SelectItems)
+        
+        # 添加复制快捷键
+        self.result_table.setContextMenuPolicy(Qt.ActionsContextMenu)
+        copy_action = QAction("复制", self.result_table)
+        copy_action.setShortcut("Ctrl+C")
+        copy_action.triggered.connect(self.copy_selected_cells)
+        self.result_table.addAction(copy_action)
         
         result_table_layout.addWidget(self.result_table)
         result_group.setLayout(result_table_layout)
@@ -1795,7 +1806,7 @@ class MultiTubeUI(QMainWindow):
                 relative_y = y + h - fly_height  # 从管子底部计算高度
                 
                 # 绘制果蝇位置
-                cv2.circle(annotated_frame, (fly_x, int(relative_y)), 5, (0, 0, 255), -1)
+                cv2.circle(annotated_frame, (fly_x, int(relative_y)), 8, (0, 0, 255), 1)
                 
                 # 绘制果蝇高度标注
                 cv2.putText(annotated_frame, f"{int(fly_height)}", (fly_x-20, int(relative_y)-10), 
@@ -2077,3 +2088,55 @@ class MultiTubeUI(QMainWindow):
             self.update_tube_table()
             
             self.status_label.setText("已清空视频列表")
+    
+    def copy_selected_cells(self):
+        """复制选中的表格单元格到剪贴板"""
+        selected_ranges = self.result_table.selectedRanges()
+        if not selected_ranges:
+            return
+        
+        # 获取第一个选中的范围
+        selected_range = selected_ranges[0]
+        top_row = selected_range.topRow()
+        bottom_row = selected_range.bottomRow()
+        left_col = selected_range.leftColumn()
+        right_col = selected_range.rightColumn()
+        
+        # 构建要复制的文本
+        copied_text = ""
+        
+        # 如果选中了多行多列，包含表头
+        if bottom_row - top_row > 0 or right_col - left_col > 0:
+            # 添加列标题
+            for col in range(left_col, right_col + 1):
+                header_item = self.result_table.horizontalHeaderItem(col)
+                header_text = header_item.text() if header_item else ""
+                copied_text += header_text
+                if col < right_col:
+                    copied_text += "\t"
+            copied_text += "\n"
+        
+        # 添加选中的单元格内容
+        for row in range(top_row, bottom_row + 1):
+            # 添加行标题
+            row_header_item = self.result_table.verticalHeaderItem(row)
+            row_header_text = row_header_item.text() if row_header_item else ""
+            copied_text += row_header_text + "\t"
+            
+            # 添加单元格内容
+            for col in range(left_col, right_col + 1):
+                item = self.result_table.item(row, col)
+                cell_text = item.text() if item else ""
+                copied_text += cell_text
+                if col < right_col:
+                    copied_text += "\t"
+            
+            if row < bottom_row:
+                copied_text += "\n"
+        
+        # 复制到剪贴板
+        clipboard = QApplication.clipboard()
+        clipboard.setText(copied_text)
+        
+        # 显示状态消息
+        self.status_label.setText(f"已复制 {bottom_row - top_row + 1} 行 {right_col - left_col + 1} 列数据到剪贴板")

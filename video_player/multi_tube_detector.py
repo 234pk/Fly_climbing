@@ -419,7 +419,7 @@ class MultiTubeFlyDetector:
                 
                 # 绘制果蝇位置
                 if self.fly_positions[i] is not None:
-                    cv2.circle(frame, self.fly_positions[i], 5, (0, 0, 255), -1)
+                    cv2.circle(frame, self.fly_positions[i], 8, (0, 0, 255), 1)
                     
                     # 绘制爬行高度线
                     cv2.line(frame, (x, y + h - self.climbing_heights[i]), 
