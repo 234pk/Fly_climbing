@@ -1,0 +1,53 @@
+name: Build macOS DMG
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+    
+    - name: Build app with PyInstaller
+      run: |
+        pyinstaller build_mac.spec
+    
+    - name: Create DMG
+      run: |
+        chmod +x create_dmg.sh
+        ./create_dmg.sh
+    
+    - name: Upload DMG artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: FlyClimbingAnalyzer-macOS
+        path: dmg/*.dmg
+    
+    - name: Upload DMG to release
+      if: github.event_name == 'release'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: dmg/FlyClimbingAnalyzer_1.0.dmg
+        asset_name: FlyClimbingAnalyzer_1.0.dmg
+        asset_content_type: application/octet-stream
