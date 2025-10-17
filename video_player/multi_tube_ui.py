@@ -479,6 +479,17 @@ class VideoDisplayWidget(QWidget):
         """停止手动选择果蝇"""
         self.manual_selecting = False
         self.update()
+        
+    def start_remove_fly_mode(self):
+        """开始去除果蝇模式"""
+        self.remove_fly_mode = True
+        self.manual_selecting = False
+        self.update()
+        
+    def stop_remove_fly_mode(self):
+        """停止去除果蝇模式"""
+        self.remove_fly_mode = False
+        self.update()
 
 
 class MultiTubeUI(QMainWindow):
@@ -523,17 +534,26 @@ class MultiTubeUI(QMainWindow):
         self.connect_signals()
         
     def start_remove_fly_mode(self):
-        """开始去除果蝇模式"""
+        """开始或取消去除果蝇模式"""
         if not self.video_player.is_video_loaded():
             QMessageBox.warning(self, "警告", "请先加载视频")
             return
             
-        # 启动去除果蝇模式
-        self.video_display.remove_fly_mode = True
-        self.remove_fly_btn.setEnabled(False)
-        self.manual_select_btn.setEnabled(False)
-        self.undo_last_select_btn.setEnabled(False)
-        self.status_label.setText("去除果蝇模式：点击要去除的果蝇")
+        # 切换去除果蝇模式
+        if self.video_display.remove_fly_mode:
+            # 取消去除果蝇模式
+            self.video_display.stop_remove_fly_mode()
+            self.remove_fly_btn.setText("去除果蝇")
+            self.manual_select_btn.setEnabled(True)
+            self.undo_last_select_btn.setEnabled(True)
+            self.status_label.setText("已取消去除果蝇模式")
+        else:
+            # 启动去除果蝇模式
+            self.video_display.start_remove_fly_mode()
+            self.remove_fly_btn.setText("取消去除")
+            self.manual_select_btn.setEnabled(False)
+            self.undo_last_select_btn.setEnabled(False)
+            self.status_label.setText("去除果蝇模式：点击要去除的果蝇")
         
     def init_ui(self):
         """初始化用户界面"""
@@ -1654,11 +1674,7 @@ class MultiTubeUI(QMainWindow):
             else:
                 self.status_label.setText(f"去除失败：管子 {tube_index+1} 位置 {image_pos}")
                 
-            # 退出去除果蝇模式
-            self.video_display.remove_fly_mode = False
-            self.remove_fly_btn.setEnabled(True)
-            self.manual_select_btn.setEnabled(True)
-            self.undo_last_select_btn.setEnabled(True)
+            # 不退出去除果蝇模式，保持持续去除状态
             return
             
         # 处理手动选择模式
