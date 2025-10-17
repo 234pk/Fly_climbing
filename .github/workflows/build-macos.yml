@@ -26,7 +26,7 @@ jobs:
         
     - name: Build macOS app with PyInstaller
       run: |
-        pyinstaller build_mac.spec
+        pyinstaller build_mac_v3.spec
         
     - name: Create DMG
       run: |

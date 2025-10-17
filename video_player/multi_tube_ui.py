@@ -571,11 +571,14 @@ class MultiTubeUI(QMainWindow):
         splitter = QSplitter(Qt.Horizontal)
         main_layout.addWidget(splitter)
         
-        # 左侧：视频列表和显示区域
+        # 左侧：视频显示区域和控制区域
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
         
-        # 视频列表区域
+        # 创建视频显示区域的水平布局
+        video_display_layout = QHBoxLayout()
+        
+        # 视频列表区域（在视频显示区域的左侧）
         video_list_group = QGroupBox("视频列表")
         video_list_layout = QVBoxLayout()
         
@@ -599,11 +602,14 @@ class MultiTubeUI(QMainWindow):
         video_list_layout.addLayout(video_btn_layout)
         
         video_list_group.setLayout(video_list_layout)
-        left_layout.addWidget(video_list_group)
+        video_list_group.setMaximumWidth(250)  # 设置视频列表的最大宽度
+        video_display_layout.addWidget(video_list_group)
         
-        # 视频显示控件
+        # 视频显示控件（在视频列表的右侧）
         self.video_display = VideoDisplayWidget()
-        left_layout.addWidget(self.video_display)
+        video_display_layout.addWidget(self.video_display)
+        
+        left_layout.addLayout(video_display_layout)
         
         # 视频控制区域
         control_group = QGroupBox("视频控制")
