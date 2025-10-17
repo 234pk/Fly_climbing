@@ -43,7 +43,7 @@ jobs:
         hdiutil create -volname "FlyClimbingAnalyzer" -srcfolder dmg_temp/FlyClimbingAnalyzer -ov -format UDZO "FlyClimbingAnalyzer-${{ github.ref_name }}.dmg"
         
     - name: Upload DMG as artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: mac-dmg
         path: FlyClimbingAnalyzer-${{ github.ref_name }}.dmg
