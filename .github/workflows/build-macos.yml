@@ -1,73 +1,60 @@
-name: Build macOS DMG
+name: Build and Release macOS App
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  release:
-    types: [ published ]
+    tags:
+      - 'v*'
 
 jobs:
-  build-macos:
+  build:
     runs-on: macos-latest
     
     steps:
-    - uses: actions/checkout@v3
-    
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.9'
-    
+        python-version: '3.10'
+        
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pyinstaller
-    
-    - name: Build app with PyInstaller
+        
+    - name: Build macOS app with PyInstaller
       run: |
         pyinstaller build_mac.spec
-    
-    - name: Check if app was created
-      run: |
-        ls -la dist/
-        if [ ! -d "dist/FlyClimbingAnalyzer.app" ]; then
-          echo "Error: FlyClimbingAnalyzer.app was not created"
-          exit 1
-        fi
-    
-    - name: Create DMG directory
-      run: |
-        mkdir -p dmg
-    
+        
     - name: Create DMG
       run: |
-        chmod +x create_dmg.sh
-        ./create_dmg.sh
-    
-    - name: Check if DMG was created
-      run: |
-        ls -la dmg/
-        if [ ! -f "dmg/FlyClimbingAnalyzer_1.0.dmg" ]; then
-          echo "Error: FlyClimbingAnalyzer_1.0.dmg was not created"
-          exit 1
-        fi
-    
-    - name: Upload DMG artifact
-      uses: actions/upload-artifact@v4
+        # 创建DMG文件夹
+        mkdir -p dmg_temp/FlyClimbingAnalyzer
+        # 复制应用到DMG文件夹
+        cp -r dist/FlyClimbingAnalyzer.app dmg_temp/FlyClimbingAnalyzer/
+        # 复制示例文件到DMG文件夹
+        cp -r example dmg_temp/FlyClimbingAnalyzer/
+        # 创建应用程序文件夹链接
+        ln -s /Applications dmg_temp/FlyClimbingAnalyzer/Applications
+        
+        # 创建DMG
+        hdiutil create -volname "FlyClimbingAnalyzer" -srcfolder dmg_temp/FlyClimbingAnalyzer -ov -format UDZO "FlyClimbingAnalyzer-${{ github.ref_name }}.dmg"
+        
+    - name: Upload DMG as artifact
+      uses: actions/upload-artifact@v3
       with:
-        name: FlyClimbingAnalyzer-macOS
-        path: dmg/*.dmg
-    
-    - name: Upload DMG to release
-      if: github.event_name == 'release'
-      uses: actions/upload-release-asset@v1
+        name: mac-dmg
+        path: FlyClimbingAnalyzer-${{ github.ref_name }}.dmg
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: |
+          FlyClimbingAnalyzer-${{ github.ref_name }}.dmg
+        draft: false
+        prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: dmg/FlyClimbingAnalyzer_1.0.dmg
-        asset_name: FlyClimbingAnalyzer_1.0.dmg
-        asset_content_type: application/octet-stream

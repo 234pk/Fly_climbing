@@ -70,8 +70,8 @@ app = BUNDLE(
     info_plist={
         'CFBundleName': 'FlyClimbingAnalyzer',
         'CFBundleDisplayName': 'Fly Climbing Analyzer',
-        'CFBundleVersion': '1.0',
-        'CFBundleShortVersionString': '1.0',
+        'CFBundleVersion': '2.0',
+        'CFBundleShortVersionString': '2.0',
         'CFBundleIdentifier': 'com.flyclimbing.analyzer',
         'NSHighResolutionCapable': True,
         'LSApplicationCategoryType': 'public.app-category.science',
